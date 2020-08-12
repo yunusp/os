@@ -308,6 +308,7 @@ Return Value:
     BoBootDriveNumber = BootDriveNumber;
     BoBootPartitionStart = PartitionOffset;
     BoFat12FatRegion = NULL;
+    BopPrintString(0, 0, "VBR");
 
     //
     // Read the boot sector to validate that this is a FAT drive and find out
@@ -603,12 +604,13 @@ Return Value:
     //
 
     MainFunction = BOOT_MANAGER_ADDRESS;
+    BopPrintString(0, 0, "Launch");
     ReturnValue = MainFunction(TopOfStack,
                                StackSize,
                                PartitionOffset,
                                BootDriveNumber);
 
-    BopPrintString(0, 4, "Return ");
+    BopPrintString(0, 4, "Return");
     BopPrintHexInteger(7, 4, ReturnValue);
     Status = STATUS_DRIVER_FUNCTION_MISSING;
 
@@ -767,7 +769,7 @@ Return Value:
 
     Status = FwpRealModeCreateBiosCallContext(&RealModeContext, 0x13);
     if (!KSUCCESS(Status)) {
-        goto BlockOperationEnd;
+        return Status;
     }
 
     //
@@ -861,7 +863,7 @@ Return Value:
     PFAT_LONG_DIRECTORY_ENTRY LongEntry;
     UCHAR LongEntryChecksum;
     ULONG NameIndex;
-    PUSHORT Region;
+    PUCHAR Region;
     ULONG RegionIndex;
     ULONG RegionSize;
     UCHAR Sequence;
@@ -894,27 +896,29 @@ Return Value:
             NameIndex = *State;
             for (RegionIndex = 0; RegionIndex < 3; RegionIndex += 1) {
                 if (RegionIndex == 0) {
-                    Region = LongEntry->Name1;
-                    RegionSize = FAT_LONG_DIRECTORY_ENTRY_NAME1_SIZE;
+                    Region = (PUCHAR)&(LongEntry->Name1);
+                    RegionSize = sizeof(LongEntry->Name1);
 
                 } else if (RegionIndex == 1) {
-                    Region = LongEntry->Name2;
-                    RegionSize = FAT_LONG_DIRECTORY_ENTRY_NAME2_SIZE;
+                    Region = (PUCHAR)&(LongEntry->Name2);
+                    RegionSize = sizeof(LongEntry->Name2);
 
                 } else {
-                    Region = LongEntry->Name3;
-                    RegionSize = FAT_LONG_DIRECTORY_ENTRY_NAME3_SIZE;
+                    Region = (PUCHAR)&(LongEntry->Name3);
+                    RegionSize = sizeof(LongEntry->Name3);
                 }
 
                 for (CharacterIndex = 0;
                      CharacterIndex < RegionSize;
-                     CharacterIndex += 1) {
+                     CharacterIndex += sizeof(USHORT)) {
 
                     if (Name[NameIndex] == '\0') {
                         break;
                     }
 
-                    if (Region[CharacterIndex] != Name[NameIndex]) {
+                    if (READ_UNALIGNED16(&(Region[CharacterIndex])) !=
+                        Name[NameIndex]) {
+
                         return FALSE;
                     }
 

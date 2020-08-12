@@ -30,6 +30,13 @@ Environment:
 // ------------------------------------------------------------------- Includes
 //
 
+//
+// Define away API decorators, as everything is linked statically.
+//
+
+#define RTL_API
+#define KERNEL_API
+
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>
@@ -38,6 +45,11 @@ Environment:
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <minoca/lib/types.h>
+#include <minoca/lib/status.h>
+#include <minoca/lib/rtl.h>
+#include <minoca/kernel/hmod.h>
 
 #include "uefifw.h"
 #include "efiffs.h"
@@ -170,7 +182,7 @@ GenfvCalculateChecksum8 (
 
 UINT16
 GenfvCalculateChecksum16 (
-    UINT16 *Buffer,
+    UINT8 *Buffer,
     UINTN Size
     );
 
@@ -453,8 +465,8 @@ Return Value:
     Buffer = malloc(BufferSize);
     if (Buffer == NULL) {
         fprintf(stderr,
-                "Error: Failed to allocate image buffer, size 0x%llx.\n",
-                CurrentOffset);
+                "Error: Failed to allocate image buffer, size 0x%lx.\n",
+                (long)CurrentOffset);
 
         Status = ENOMEM;
         goto CreateVolumeEnd;
@@ -510,7 +522,7 @@ Return Value:
     Header->BlockMap[0].BlockLength = Context->BlockSize;
     Header->BlockMap[1].BlockCount = 0;
     Header->BlockMap[1].BlockLength = 0;
-    Header->Checksum = GenfvCalculateChecksum16((UINT16 *)Header,
+    Header->Checksum = GenfvCalculateChecksum16((UINT8 *)Header,
                                                 Header->HeaderLength);
 
     //
@@ -656,7 +668,7 @@ Return Value:
     if (BytesRead < HeaderSize) {
         fprintf(stderr,
                 "Error: Only read %ld bytes of %s.\n",
-                BytesRead,
+                (long)BytesRead,
                 FileName);
 
         Status = EINVAL;
@@ -797,9 +809,9 @@ Return Value:
 
     if (BufferSize != 0) {
         if ((Context->Flags & GENFV_OPTION_VERBOSE) != 0) {
-            printf("Adding file %s at offset %llx, size %llx\n",
+            printf("Adding file %s at offset %lx, size %llx\n",
                    FileName,
-                   *Offset,
+                   (long)*Offset,
                    FileSize);
         }
 
@@ -903,8 +915,8 @@ Return Value:
         PadFile->Attributes = 0;
         PadFileSize = (NewOffset - *Offset) - sizeof(EFI_FFS_FILE_HEADER);
         if ((Context->Flags & GENFV_OPTION_VERBOSE) != 0) {
-            printf("Creating pad file at 0x%llx, Size %llx to new offset "
-                   "0x%llx.\n",
+            printf("Creating pad file at 0x%lx, Size %lx to new offset "
+                   "0x%lx.\n",
                    *Offset,
                    PadFileSize,
                    NewOffset);
@@ -1021,7 +1033,7 @@ Return Value:
 
 UINT16
 GenfvCalculateChecksum16 (
-    UINT16 *Buffer,
+    UINT8 *Buffer,
     UINTN Size
     )
 
@@ -1049,10 +1061,9 @@ Return Value:
     UINTN Index;
     UINT16 Sum;
 
-    Size = Size / sizeof(UINT16);
     Sum = 0;
-    for (Index = 0; Index < Size; Index += 1) {
-        Sum = (UINT16)(Sum + Buffer[Index]);
+    for (Index = 0; Index < Size; Index += 2) {
+        Sum = (UINT16)(Sum + READ_UNALIGNED16(Buffer + Index));
     }
 
     return 0x10000 - Sum;

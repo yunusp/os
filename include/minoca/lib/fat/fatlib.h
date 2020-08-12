@@ -288,6 +288,8 @@ Members:
 
 --*/
 
+#pragma pack(push, 1)
+
 typedef struct _FAT_EXTENDED_BIOS_PARAMETERS {
     BYTE PhysicalDriveNumber;
     BYTE CurrentHead;
@@ -549,7 +551,7 @@ typedef struct _FAT_DIRECTORY_ENTRY {
     USHORT LastModifiedDate;
     USHORT ClusterLow;
     ULONG FileSizeInBytes;
-} PACKED FAT_DIRECTORY_ENTRY, *PFAT_DIRECTORY_ENTRY;
+} PACKED ALIGNED32 FAT_DIRECTORY_ENTRY, *PFAT_DIRECTORY_ENTRY;
 
 /*++
 
@@ -593,7 +595,9 @@ typedef struct _FAT_LONG_DIRECTORY_ENTRY {
     USHORT Name2[FAT_LONG_DIRECTORY_ENTRY_NAME2_SIZE];
     USHORT Cluster;
     USHORT Name3[FAT_LONG_DIRECTORY_ENTRY_NAME3_SIZE];
-} PACKED FAT_LONG_DIRECTORY_ENTRY, *PFAT_LONG_DIRECTORY_ENTRY;
+} PACKED ALIGNED32 FAT_LONG_DIRECTORY_ENTRY, *PFAT_LONG_DIRECTORY_ENTRY;
+
+#pragma pack(pop)
 
 //
 // -------------------------------------------------------- Function Prototypes
